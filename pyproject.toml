@@ -1,0 +1,17 @@
+[project]
+name = "hessband"
+version = "0.1.0"
+description = "Analytic-Hessian bandwidth selection for univariate kernel regression"
+authors = [
+    { name = "Your Name", email = "" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scikit-learn",
+    "scipy",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

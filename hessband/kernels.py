@@ -40,9 +40,11 @@ def kernel_weights(u: np.ndarray, h: float, kernel: str = "gaussian"):
 
 def kernel_derivatives(u: np.ndarray, h: float, kernel: str):
     """
-    Compute the first and second derivatives of kernel weights with respect to h.
+    Compute the first and second derivatives of kernel weights with
+    respect to the bandwidth.
 
-    Returns a tuple (w, d_w, dd_w), where w are the weights, d_w the derivative
+    Returns a tuple ``(w, d_w, dd_w)``, where ``w`` are the weights,
+    ``d_w`` the first derivative and ``dd_w`` the second derivative.
     and dd_w the second derivative. The derivatives are computed analytically
     for the Gaussian and Epanechnikov kernels.
     """

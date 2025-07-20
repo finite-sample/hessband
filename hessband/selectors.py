@@ -9,7 +9,11 @@ golden-section search and Bayesian optimisation. A high-level function
 
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern, WhiteKernel, ConstantKernel as C
+from sklearn.gaussian_process.kernels import (
+    Matern,
+    WhiteKernel,
+    ConstantKernel as C,
+)
 import warnings
 import math
 from math import erf
@@ -185,12 +189,21 @@ def bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b,
         while attempts < 2:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                gp = GaussianProcessRegressor(kernel=kernel_gp, normalize_y=True).fit(X_train, y_train)
-                # If noise_level hit lower bound, relax it
-                if any(issubclass(wi.category, warnings.ConvergenceWarning) for wi in w):
+                gp = GaussianProcessRegressor(
+                    kernel=kernel_gp,
+                    normalize_y=True,
+                ).fit(X_train, y_train)
+                # If noise_level hits lower bound, relax it
+                if any(
+                    issubclass(wi.category, warnings.ConvergenceWarning)
+                    for wi in w
+                ):
                     lb, ub = wk.noise_level_bounds
-                    new_lb = max(lb / 10, 1e-8)
-                    wk = WhiteKernel(noise_level=wk.noise_level, noise_level_bounds=(new_lb, ub))
+                    new_lb = max(lb / 10.0, 1e-8)
+                    wk = WhiteKernel(
+                        noise_level=wk.noise_level,
+                        noise_level_bounds=(new_lb, ub),
+                    )
                     kernel_gp = base_kernel + wk
                     attempts += 1
                     continue

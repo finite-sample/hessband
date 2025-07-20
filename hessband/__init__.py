@@ -31,6 +31,11 @@ from .selectors import (
     bayes_opt_bandwidth,
 )
 
+from .kde import (
+    select_kde_bandwidth,
+    lscv_generic,
+)
+
 __all__ = [
     "select_nw_bandwidth",
     "nw_predict",
@@ -40,4 +45,6 @@ __all__ = [
     "analytic_newton",
     "golden_section",
     "bayes_opt_bandwidth",
+    "select_kde_bandwidth",
+    "lscv_generic",
 ]

@@ -1,11 +1,11 @@
 [project]
 name = "hessband"
-version = "0.1.0"
+version = "0.1.1"
 description = "Analytic-Hessian bandwidth selection for univariate kernel regression"
 authors = [
     { name = "Gaurav Sood", email = "gsood07@gmail.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 dependencies = [
     "numpy",
     "scikit-learn",

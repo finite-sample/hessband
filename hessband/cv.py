@@ -41,7 +41,8 @@ class CVScorer:
         Parameters
         ----------
         predict_fn : callable
-            Function that takes (X_train, y_train, X_test, h, kernel) and returns predictions.
+            Function that takes ``(X_train, y_train, X_test, h, kernel)`` and
+            returns predictions.
         h : float
             Bandwidth value.
 

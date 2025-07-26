@@ -1,4 +1,8 @@
-# Hessband
+# Hessband: Analytic Bandwidth Selector
+
+[![PyPI version](https://img.shields.io/pypi/v/hessband.svg)](https://pypi.org/project/hessband/)
+[![PyPI Downloads](https://static.pepy.tech/badge/hessband)](https://pepy.tech/projects/hessband)
+[![Python Versions](https://img.shields.io/pypi/pyversions/hessband.svg)](https://pypi.org/project/hessband/)
 
 Hessband is a Python package for selecting bandwidths in univariate smoothing.  It provides analytic gradients and Hessians of the leave‑one‑out cross‑validation (LOOCV) risk for Nadaraya–Watson regression and least‑squares cross‑validation (LSCV) for kernel density estimation (KDE).  Bandwidth selectors include grid search, plug‑in rules, finite‑difference Newton, analytic Newton, golden‑section search, and Bayesian optimisation.
 

@@ -30,6 +30,10 @@ class CVScorer:
     def __init__(self, X, y, folds=5, kernel='gaussian'):
         self.X = np.asarray(X).ravel()
         self.y = np.asarray(y).ravel()
+        if not (2 <= folds <= len(self.X)):
+            raise ValueError(
+                f"`folds` must be between 2 and {len(self.X)}, got {folds}"
+            )
         self.kf = KFold(n_splits=folds, shuffle=True, random_state=0)
         self.kernel = kernel
         self.evals = 0

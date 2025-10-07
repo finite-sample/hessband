@@ -46,7 +46,7 @@ jobs:
       run: isort --check-only --diff .
 
     - name: Run flake8
-      run: flake8 hessband tests
+      run: flake8 hessband tests --max-line-length=88
 
     - name: Run mypy
       run: mypy hessband --ignore-missing-imports

@@ -1,0 +1,180 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+        pip install -e .
+
+    - name: Create docs directory structure
+      run: |
+        mkdir -p docs/source
+        mkdir -p docs/build
+
+    - name: Generate Sphinx configuration
+      run: |
+        cat > docs/source/conf.py << 'EOF'
+        import os
+        import sys
+        sys.path.insert(0, os.path.abspath('../../'))
+
+        project = 'hessband'
+        copyright = '2024, Gaurav Sood'
+        author = 'Gaurav Sood'
+
+        extensions = [
+            'sphinx.ext.autodoc',
+            'sphinx.ext.viewcode',
+            'sphinx.ext.napoleon',
+            'sphinx_autodoc_typehints',
+        ]
+
+        templates_path = ['_templates']
+        exclude_patterns = []
+
+        html_theme = 'sphinx_rtd_theme'
+        html_static_path = ['_static']
+
+        autodoc_member_order = 'bysource'
+        napoleon_google_docstring = True
+        napoleon_numpy_docstring = True
+        EOF
+
+    - name: Generate index.rst
+      run: |
+        cat > docs/source/index.rst << 'EOF'
+        hessband documentation
+        ======================
+
+        .. automodule:: hessband
+           :members:
+           :undoc-members:
+           :show-inheritance:
+
+        Modules
+        -------
+
+        .. toctree::
+           :maxdepth: 2
+
+           modules
+
+        Indices and tables
+        ==================
+
+        * :ref:`genindex`
+        * :ref:`modindex`
+        * :ref:`search`
+        EOF
+
+    - name: Generate modules.rst
+      run: |
+        cat > docs/source/modules.rst << 'EOF'
+        hessband modules
+        ================
+
+        .. toctree::
+           :maxdepth: 4
+
+           hessband
+        EOF
+
+    - name: Generate hessband.rst
+      run: |
+        cat > docs/source/hessband.rst << 'EOF'
+        hessband package
+        ================
+
+        .. automodule:: hessband
+           :members:
+           :undoc-members:
+           :show-inheritance:
+
+        Submodules
+        ----------
+
+        hessband.cv module
+        ------------------
+
+        .. automodule:: hessband.cv
+           :members:
+           :undoc-members:
+           :show-inheritance:
+
+        hessband.kde module
+        -------------------
+
+        .. automodule:: hessband.kde
+           :members:
+           :undoc-members:
+           :show-inheritance:
+
+        hessband.kernels module
+        -----------------------
+
+        .. automodule:: hessband.kernels
+           :members:
+           :undoc-members:
+           :show-inheritance:
+
+        hessband.selectors module
+        -------------------------
+
+        .. automodule:: hessband.selectors
+           :members:
+           :undoc-members:
+           :show-inheritance:
+        EOF
+
+    - name: Build documentation
+      run: |
+        cd docs
+        sphinx-build -b html source build
+
+    - name: Setup Pages
+      if: github.ref == 'refs/heads/main'
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/build
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

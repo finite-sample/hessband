@@ -1,24 +1,30 @@
 """
-Kernel density estimation (KDE) bandwidth selectors with analytic gradients and Hessians.
+Kernel density estimation (KDE) bandwidth selectors with analytic gradients.
 
 This module implements leave‑one‑out least‑squares cross‑validation (LSCV) for
 univariate KDE with Gaussian and Epanechnikov kernels.  It provides analytic
-expressions for the cross‑validation score, gradient and Hessian with respect to
-the bandwidth.  A Newton–Armijo optimiser is included to select the optimal
+expressions for the cross‑validation score, gradient and Hessian with respect
+to the bandwidth.  A Newton–Armijo optimiser is included to select the optimal
 bandwidth without numerical differencing.
 
 The analytic formulas are based on convolution of kernels and their
 derivatives; see the accompanying paper for details.
 """
 
-from typing import Callable, Tuple, Dict
+from typing import Callable, Dict, Optional, Tuple
+
 import numpy as np
 
 # ---------------------------------------------------------------------------
 # Kernel primitives & helper functions
 # ---------------------------------------------------------------------------
 SQRT_2PI = np.sqrt(2 * np.pi)
-_pairwise_sq = lambda x: (x[:, None] - x[None, :]) ** 2  # n×n squared distances
+
+
+def _pairwise_sq(x):
+    """Compute n×n squared distances matrix."""
+    return (x[:, None] - x[None, :]) ** 2
+
 
 def _poly_mask(u: np.ndarray, mask: np.ndarray, expr):
     """Return expr on mask, 0 elsewhere. expr may be scalar or array."""
@@ -29,37 +35,91 @@ def _poly_mask(u: np.ndarray, mask: np.ndarray, expr):
         out[mask] = expr[mask]
     return out
 
+
 # Gaussian kernel and derivatives
-K_gauss = lambda u: np.exp(-0.5 * u * u) / SQRT_2PI
-K_gauss_p = lambda u: -u * K_gauss(u)
-K_gauss_pp = lambda u: (u * u - 1) * K_gauss(u)
-K2_gauss = lambda u: np.exp(-0.25 * u * u) / np.sqrt(4 * np.pi)
-K2_gauss_p = lambda u: -0.5 * u * K2_gauss(u)
-K2_gauss_pp = lambda u: (0.25 * u * u - 0.5) * K2_gauss(u)
+def K_gauss(u):
+    """Gaussian kernel."""
+    return np.exp(-0.5 * u * u) / SQRT_2PI
+
+
+def K_gauss_p(u):
+    """First derivative of Gaussian kernel."""
+    return -u * K_gauss(u)
+
+
+def K_gauss_pp(u):
+    """Second derivative of Gaussian kernel."""
+    return (u * u - 1) * K_gauss(u)
+
+
+def K2_gauss(u):
+    """Convolution of Gaussian kernel with itself."""
+    return np.exp(-0.25 * u * u) / np.sqrt(4 * np.pi)
+
+
+def K2_gauss_p(u):
+    """First derivative of Gaussian convolution."""
+    return -0.5 * u * K2_gauss(u)
+
+
+def K2_gauss_pp(u):
+    """Second derivative of Gaussian convolution."""
+    return (0.25 * u * u - 0.5) * K2_gauss(u)
+
 
 # Epanechnikov kernel and derivatives (piecewise)
-_absu = lambda u: np.abs(u)
-K_epan = lambda u: _poly_mask(u, _absu(u) <= 1, 0.75 * (1 - u * u))
-K_epan_p = lambda u: _poly_mask(u, _absu(u) <= 1, -1.5 * u)
-K_epan_pp = lambda u: _poly_mask(u, _absu(u) <= 1, -1.5)
-# Convolution K*K for Epanechnikov kernel (valid for |u| ≤ 2)
-K2_epan = lambda u: _poly_mask(
-    u,
-    _absu(u) <= 2,
-    0.6 - 0.75 * _absu(u) ** 2 + 0.375 * _absu(u) ** 3 - 0.01875 * _absu(u) ** 5,
-)
-K2_epan_p = lambda u: _poly_mask(
-    u,
-    _absu(u) <= 2,
-    np.sign(u) * (-0.09375 * _absu(u) ** 4 + 1.125 * _absu(u) ** 2 - 1.5 * _absu(u)),
-)
-K2_epan_pp = lambda u: _poly_mask(
-    u,
-    _absu(u) <= 2,
-    -0.375 * _absu(u) ** 3 + 2.25 * _absu(u) - 1.5,
-)
+def _absu(u):
+    """Absolute value helper."""
+    return np.abs(u)
 
-KERNELS: Dict[str, Tuple[Callable, Callable, Callable, Callable, Callable, Callable]] = {
+
+def K_epan(u):
+    """Epanechnikov kernel."""
+    return _poly_mask(u, _absu(u) <= 1, 0.75 * (1 - u * u))
+
+
+def K_epan_p(u):
+    """First derivative of Epanechnikov kernel."""
+    return _poly_mask(u, _absu(u) <= 1, -1.5 * u)
+
+
+def K_epan_pp(u):
+    """Second derivative of Epanechnikov kernel."""
+    return _poly_mask(u, _absu(u) <= 1, -1.5)
+
+
+# Convolution K*K for Epanechnikov kernel (valid for |u| ≤ 2)
+def K2_epan(u):
+    """Convolution of Epanechnikov kernel with itself."""
+    return _poly_mask(
+        u,
+        _absu(u) <= 2,
+        (0.6 - 0.75 * _absu(u) ** 2 + 0.375 * _absu(u) ** 3 - 0.01875 * _absu(u) ** 5),
+    )
+
+
+def K2_epan_p(u):
+    """First derivative of Epanechnikov convolution."""
+    return _poly_mask(
+        u,
+        _absu(u) <= 2,
+        np.sign(u)
+        * (-0.09375 * _absu(u) ** 4 + 1.125 * _absu(u) ** 2 - 1.5 * _absu(u)),
+    )
+
+
+def K2_epan_pp(u):
+    """Second derivative of Epanechnikov convolution."""
+    return _poly_mask(
+        u,
+        _absu(u) <= 2,
+        -0.375 * _absu(u) ** 3 + 2.25 * _absu(u) - 1.5,
+    )
+
+
+KERNELS: Dict[
+    str, Tuple[Callable, Callable, Callable, Callable, Callable, Callable]
+] = {
     "gauss": (K_gauss, K_gauss_p, K_gauss_pp, K2_gauss, K2_gauss_p, K2_gauss_pp),
     "epan": (K_epan, K_epan_p, K_epan_pp, K2_epan, K2_epan_p, K2_epan_pp),
 }
@@ -68,33 +128,43 @@ KERNELS: Dict[str, Tuple[Callable, Callable, Callable, Callable, Callable, Calla
 # LSCV score, gradient and Hessian
 # ---------------------------------------------------------------------------
 
+
 def lscv_generic(x: np.ndarray, h: float, kernel: str) -> Tuple[float, float, float]:
     """Return (LSCV, gradient, Hessian) at bandwidth h for the chosen kernel."""
     K, Kp, Kpp, K2, K2p, K2pp = KERNELS[kernel]
     n = len(x)
     u = (x[:, None] - x[None, :]) / h
     # Score
-    term1 = K2(u).sum() / (n ** 2 * h)
+    term1 = K2(u).sum() / (n**2 * h)
     K_vals = K(u)
     term2 = (K_vals.sum() - np.sum(np.diag(K_vals))) / (n * (n - 1) * h)
     score = term1 - 2 * term2
     # Gradient
     S_F = (K2(u) + u * K2p(u)).sum()
     S_K = (K_vals + u * Kp(u)).sum() - 0.0  # diagonal excluded automatically
-    grad = -S_F / (n ** 2 * h ** 2) + 2 * S_K / (n * (n - 1) * h ** 2)
+    grad = -S_F / (n**2 * h**2) + 2 * S_K / (n * (n - 1) * h**2)
     # Hessian
     S_F2 = (2 * K2p(u) + u * K2pp(u)).sum()
     S_K2 = (2 * Kp(u) + u * Kpp(u)).sum()
-    hess = 2 * S_F / (n ** 2 * h ** 3) - S_F2 / (n ** 2 * h ** 2)
-    hess += -4 * S_K / (n * (n - 1) * h ** 3) + 2 * S_K2 / (n * (n - 1) * h ** 2)
+    hess = 2 * S_F / (n**2 * h**3) - S_F2 / (n**2 * h**2)
+    hess += -4 * S_K / (n * (n - 1) * h**3) + 2 * S_K2 / (n * (n - 1) * h**2)
     return score, grad, hess
 
-lscv_gauss = lambda x, h: lscv_generic(x, h, "gauss")
-lscv_epan = lambda x, h: lscv_generic(x, h, "epan")
+
+def lscv_gauss(x, h):
+    """LSCV for Gaussian kernel."""
+    return lscv_generic(x, h, "gauss")
+
+
+def lscv_epan(x, h):
+    """LSCV for Epanechnikov kernel."""
+    return lscv_generic(x, h, "epan")
+
 
 # ---------------------------------------------------------------------------
 # Newton–Armijo optimiser for scalar bandwidth
 # ---------------------------------------------------------------------------
+
 
 def newton_opt(
     x: np.ndarray,
@@ -123,13 +193,20 @@ def newton_opt(
             step *= 0.5
     return h, evals
 
+
 # ---------------------------------------------------------------------------
 # High-level bandwidth selector
 # ---------------------------------------------------------------------------
 
-def select_kde_bandwidth(x: np.ndarray, kernel: str = "gauss",
-                         method: str = "analytic", h_bounds=(0.01, 1.0),
-                         grid_size: int = 30, h_init: float = None) -> float:
+
+def select_kde_bandwidth(
+    x: np.ndarray,
+    kernel: str = "gauss",
+    method: str = "analytic",
+    h_bounds=(0.01, 1.0),
+    grid_size: int = 30,
+    h_init: Optional[float] = None,
+) -> float:
     """
     Select an optimal bandwidth for univariate KDE using LSCV.
 
@@ -188,10 +265,13 @@ def select_kde_bandwidth(x: np.ndarray, kernel: str = "gauss",
         return float(np.exp((log_a + log_b) / 2))
     elif method == "analytic":
         # Use Newton–Armijo on the LSCV objective
-        h_opt, _ = newton_opt(x, h_init, lambda x_arr, h_val: lscv_generic(x_arr, h_val, kernel))
+        h_opt, _ = newton_opt(
+            x, h_init, lambda x_arr, h_val: lscv_generic(x_arr, h_val, kernel)
+        )
         return float(h_opt)
     else:
         raise ValueError(f"Unknown method '{method}'.")
+
 
 __all__ = [
     "select_kde_bandwidth",

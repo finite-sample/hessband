@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from hessband.cv import CVScorer
 
 

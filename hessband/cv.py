@@ -7,10 +7,11 @@ for kernel regression or density estimation.
 """
 
 import numpy as np
-from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import KFold
 
 __all__ = ["CVScorer"]
+
 
 class CVScorer:
     """
@@ -27,7 +28,8 @@ class CVScorer:
     kernel : str, optional (default='gaussian')
         Kernel type ('gaussian' or 'epanechnikov').
     """
-    def __init__(self, X, y, folds=5, kernel='gaussian'):
+
+    def __init__(self, X, y, folds=5, kernel="gaussian"):
         self.X = np.asarray(X).ravel()
         self.y = np.asarray(y).ravel()
         if not (2 <= folds <= len(self.X)):

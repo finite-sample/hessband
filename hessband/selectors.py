@@ -7,18 +7,17 @@ golden-section search and Bayesian optimisation. A high-level function
 `select_nw_bandwidth` orchestrates the selection process.
 """
 
+import math
+import warnings
+from math import erf
+
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import (
-    Matern,
-    WhiteKernel,
-    ConstantKernel as C,
-)
-import warnings
-import math
-from math import erf
-from .kernels import kernel_weights, kernel_derivatives
+from sklearn.gaussian_process.kernels import ConstantKernel as C
+from sklearn.gaussian_process.kernels import Matern, WhiteKernel
+
 from .cv import CVScorer
+from .kernels import kernel_derivatives, kernel_weights
 
 __all__ = [
     "select_nw_bandwidth",
@@ -35,7 +34,8 @@ __all__ = [
 # Nadaraya–Watson prediction
 # ----------------------------------------------------------------------------
 
-def nw_predict(X_train, y_train, X_test, h, kernel='gaussian'):
+
+def nw_predict(X_train, y_train, X_test, h, kernel="gaussian"):
     """Compute Nadaraya–Watson predictions using a specified kernel."""
     X_train = np.asarray(X_train).ravel()
     X_test = np.asarray(X_test).ravel()
@@ -49,9 +49,11 @@ def nw_predict(X_train, y_train, X_test, h, kernel='gaussian'):
         numerator[zero_mask] = y_train.sum()
     return numerator / denom
 
+
 # ----------------------------------------------------------------------------
 # Basic bandwidth selectors
 # ----------------------------------------------------------------------------
+
 
 def grid_search_cv(X, y, kernel, predict_fn, h_grid, folds=5):
     """Grid search for the best bandwidth using cross-validation."""
@@ -63,14 +65,26 @@ def grid_search_cv(X, y, kernel, predict_fn, h_grid, folds=5):
             best_score, best_h = score, h
     return best_h
 
+
 def plug_in_bandwidth(X):
     """Plug-in bandwidth based on Silverman's rule of thumb."""
     sigma = np.std(np.asarray(X).ravel(), ddof=1)
     n = len(X)
-    return 1.06 * sigma * n ** (-1/5)
+    return 1.06 * sigma * n ** (-1 / 5)
 
-def newton_fd(X, y, kernel, predict_fn, h_init, h_min=1e-3, folds=5,
-              tol=1e-3, max_iter=10, eps=1e-4):
+
+def newton_fd(
+    X,
+    y,
+    kernel,
+    predict_fn,
+    h_init,
+    h_min=1e-3,
+    folds=5,
+    tol=1e-3,
+    max_iter=10,
+    eps=1e-4,
+):
     """Finite-difference Newton method for bandwidth selection."""
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     h = max(h_init, h_min)
@@ -79,7 +93,7 @@ def newton_fd(X, y, kernel, predict_fn, h_init, h_min=1e-3, folds=5,
         s1 = scorer.score(predict_fn, h + eps)
         s_1 = scorer.score(predict_fn, max(h - eps, h_min))
         grad = (s1 - s_1) / (2 * eps)
-        hess = (s1 + s_1 - 2 * s0) / (eps ** 2)
+        hess = (s1 + s_1 - 2 * s0) / (eps**2)
         if hess <= 0:
             break
         h_new = max(h_min, h - grad / hess)
@@ -89,8 +103,10 @@ def newton_fd(X, y, kernel, predict_fn, h_init, h_min=1e-3, folds=5,
         h = h_new
     return h
 
-def analytic_newton(X, y, kernel, predict_fn, h_init, h_min=1e-3,
-                    folds=5, tol=1e-3, max_iter=10):
+
+def analytic_newton(
+    X, y, kernel, predict_fn, h_init, h_min=1e-3, folds=5, tol=1e-3, max_iter=10
+):
     """
     Analytic Newton method for LOOCV risk minimisation.
     Returns the bandwidth without performing CV evaluations in the loop.
@@ -120,7 +136,9 @@ def analytic_newton(X, y, kernel, predict_fn, h_init, h_min=1e-3,
             dd_den = dd_w.sum(axis=1)
             dm = (d_num * w_sum - num * d_den) / (w_sum**2)
             ddm = (
-                dd_num * w_sum - 2 * d_num * d_den - num * dd_den
+                dd_num * w_sum
+                - 2 * d_num * d_den
+                - num * dd_den
                 + 2 * num * (d_den**2) / w_sum
             ) / (w_sum**2)
             dm[zero_mask] = 0
@@ -150,8 +168,8 @@ def analytic_newton(X, y, kernel, predict_fn, h_init, h_min=1e-3,
         h = h_new
     return h
 
-def golden_section(X, y, kernel, predict_fn, a, b, folds=5,
-                   tol=1e-3, max_iter=20):
+
+def golden_section(X, y, kernel, predict_fn, a, b, folds=5, tol=1e-3, max_iter=20):
     """Golden-section search for bandwidth selection."""
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     phi = (1 + np.sqrt(5)) / 2
@@ -172,8 +190,10 @@ def golden_section(X, y, kernel, predict_fn, a, b, folds=5,
             f_d = scorer.score(predict_fn, d)
     return (a + b) / 2
 
-def bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b,
-                        folds=5, init_points=5, n_iter=10):
+
+def bayes_opt_bandwidth(
+    X, y, kernel, predict_fn, a, b, folds=5, init_points=5, n_iter=10
+):
     """Bayesian optimisation for bandwidth selection."""
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     # Initial design points
@@ -195,8 +215,7 @@ def bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b,
                 ).fit(X_train, y_train)
                 # If noise_level hits lower bound, relax it
                 if any(
-                    issubclass(wi.category, warnings.ConvergenceWarning)
-                    for wi in w
+                    issubclass(wi.category, warnings.ConvergenceWarning) for wi in w
                 ):
                     lb, ub = wk.noise_level_bounds
                     new_lb = max(lb / 10.0, 1e-8)
@@ -221,13 +240,22 @@ def bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b,
     best_idx = int(np.argmin(Ys))
     return float(Xs[best_idx])
 
+
 # ----------------------------------------------------------------------------
 # High-level interface
 # ----------------------------------------------------------------------------
 
-def select_nw_bandwidth(X, y, kernel='gaussian', method='analytic',
-                        folds=5, h_bounds=(0.01, 1.0), grid_size=30,
-                        init_bandwidth=None):
+
+def select_nw_bandwidth(
+    X,
+    y,
+    kernel="gaussian",
+    method="analytic",
+    folds=5,
+    h_bounds=(0.01, 1.0),
+    grid_size=30,
+    init_bandwidth=None,
+):
     """
     Select the optimal bandwidth for Nadaraya–Watson regression.
 
@@ -262,23 +290,21 @@ def select_nw_bandwidth(X, y, kernel='gaussian', method='analytic',
     a, b = h_bounds
     h_grid = np.linspace(a, b, grid_size)
 
-    if method == 'grid':
+    if method == "grid":
         return grid_search_cv(X, y, kernel, predict_fn, h_grid, folds=folds)
-    elif method == 'plugin':
+    elif method == "plugin":
         return plug_in_bandwidth(X)
-    elif method == 'newton_fd':
+    elif method == "newton_fd":
         h0 = init_bandwidth or plug_in_bandwidth(X)
-        return newton_fd(X, y, kernel, predict_fn, h_init=h0, h_min=a,
-                         folds=folds)
-    elif method == 'analytic':
+        return newton_fd(X, y, kernel, predict_fn, h_init=h0, h_min=a, folds=folds)
+    elif method == "analytic":
         h0 = init_bandwidth or plug_in_bandwidth(X)
-        return analytic_newton(X, y, kernel, predict_fn, h_init=h0,
-                               h_min=a, folds=folds)
-    elif method == 'golden':
-        return golden_section(X, y, kernel, predict_fn, a, b,
-                              folds=folds)
-    elif method == 'bayes':
-        return bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b,
-                                   folds=folds)
+        return analytic_newton(
+            X, y, kernel, predict_fn, h_init=h0, h_min=a, folds=folds
+        )
+    elif method == "golden":
+        return golden_section(X, y, kernel, predict_fn, a, b, folds=folds)
+    elif method == "bayes":
+        return bayes_opt_bandwidth(X, y, kernel, predict_fn, a, b, folds=folds)
     else:
         raise ValueError(f"Unknown method '{method}'.")

@@ -20,20 +20,17 @@ Example
 >>> y_pred = nw_predict(X, y, X, h_opt)
 
 """
-from .selectors import (
-    select_nw_bandwidth,
-    nw_predict,
-    grid_search_cv,
-    plug_in_bandwidth,
-    newton_fd,
-    analytic_newton,
-    golden_section,
-    bayes_opt_bandwidth,
-)
 
-from .kde import (
-    select_kde_bandwidth,
-    lscv_generic,
+from .kde import lscv_generic, select_kde_bandwidth
+from .selectors import (
+    analytic_newton,
+    bayes_opt_bandwidth,
+    golden_section,
+    grid_search_cv,
+    newton_fd,
+    nw_predict,
+    plug_in_bandwidth,
+    select_nw_bandwidth,
 )
 
 __all__ = [

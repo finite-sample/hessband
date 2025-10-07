@@ -1,6 +1,6 @@
 # Hessband: Analytic Bandwidth Selector
 
-[![image](https://github.com/finite-sample/hessband/actions/workflows/test.yml/badge.svg)](https://github.com/finite-sample/hessband/actions/workflows/ci.yml)
+[![image](https://github.com/finite-sample/hessband/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/hessband/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/hessband.svg)](https://pypi.org/project/hessband/)
 [![PyPI Downloads](https://static.pepy.tech/badge/hessband)](https://pepy.tech/projects/hessband)
 [![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/hessband/)

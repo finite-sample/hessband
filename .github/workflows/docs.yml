@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+        pip install sphinx furo sphinx-autodoc-typehints
         pip install -e .
 
     - name: Create docs directory structure
@@ -58,8 +58,21 @@ jobs:
         templates_path = ['_templates']
         exclude_patterns = []
 
-        html_theme = 'sphinx_rtd_theme'
+        html_theme = 'furo'
         html_static_path = ['_static']
+        
+        # Furo theme options
+        html_theme_options = {
+            "sidebar_hide_name": True,
+            "light_css_variables": {
+                "color-brand-primary": "#2563eb",
+                "color-brand-content": "#2563eb",
+            },
+            "dark_css_variables": {
+                "color-brand-primary": "#60a5fa",
+                "color-brand-content": "#60a5fa",
+            },
+        }
 
         autodoc_member_order = 'bysource'
         napoleon_google_docstring = True

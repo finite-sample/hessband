@@ -1,70 +1,123 @@
-"""
-Kernel functions and derivatives for univariate smoothing.
+# kernels.py
+# Univariate kernel weights and derivatives with respect to bandwidth h.
+# Conventions:
+#   u = (x - x') / h
+#   w(h) = K(u) / h
+# Derivatives (ignoring compact-support boundary terms):
+#   dw/dh  = -(K + u K') / h^2
+#   d2w/dh2 = (2K + 4u K' + u^2 K'') / h^3
+#
+# For the Gaussian kernel this yields:
+#   dw/dh  = w * (u^2 - 1) / h
+#   d2w/dh2 = w * (u^4 - 5u^2 + 2) / h^2
 
-This module provides routines to compute kernel weights and their
-first and second derivatives with respect to the bandwidth for
-Gaussian and Epanechnikov kernels.
-
-These functions are used internally by the analytic-Hessian bandwidth
-selector.
-"""
-
+from __future__ import annotations
 import numpy as np
 
 __all__ = [
     "weights_gaussian",
     "weights_epanechnikov",
-    "kernel_weights",
     "kernel_derivatives",
+    "kernel_weights",
 ]
 
-
-def weights_gaussian(u: np.ndarray, h: float):
-    """Return Gaussian weights for scaled distances u and bandwidth h."""
-    return np.exp(-0.5 * u**2) / (h * np.sqrt(2 * np.pi))
+_SQRT_2PI = np.sqrt(2.0 * np.pi)
 
 
-def weights_epanechnikov(u: np.ndarray, h: float):
-    """Return Epanechnikov weights for scaled distances u and bandwidth h."""
-    w = np.zeros_like(u)
-    mask = np.abs(u) <= 1
-    w[mask] = 0.75 * (1 - u[mask] ** 2) / h
-    return w
+def weights_gaussian(u: np.ndarray, h: float) -> np.ndarray:
+    """Gaussian kernel weight K(u)/h with K(u)=phi(u)."""
+    u = np.asarray(u, dtype=float)
+    h = float(h)
+    if h <= 0:
+        raise ValueError("h must be positive")
+    K = np.exp(-0.5 * u * u) / _SQRT_2PI
+    return K / h
 
 
-def kernel_weights(u: np.ndarray, h: float, kernel: str = "gaussian"):
-    """Dispatch to the appropriate kernel weight function."""
-    if kernel == "gaussian":
-        return weights_gaussian(u, h)
-    elif kernel == "epanechnikov":
-        return weights_epanechnikov(u, h)
-    else:
-        raise ValueError(f"Unknown kernel '{kernel}'")
+def weights_epanechnikov(u: np.ndarray, h: float) -> np.ndarray:
+    """Epanechnikov kernel weight K(u)/h with K(u)=0.75*(1-u^2) on |u|<=1."""
+    u = np.asarray(u, dtype=float)
+    h = float(h)
+    if h <= 0:
+        raise ValueError("h must be positive")
+    base = 0.75 * np.maximum(0.0, 1.0 - u * u)
+    return base / h
 
 
 def kernel_derivatives(u: np.ndarray, h: float, kernel: str):
     """
-    Compute the first and second derivatives of kernel weights with
-    respect to the bandwidth.
+    Return (w, dw, d2w) for w(h)=K(u)/h where u=(x-x')/h.
+    Derivatives are with respect to h and ignore support-boundary motion
+    for compact kernels, which is the standard practical convention.
 
-    Returns a tuple ``(w, d_w, dd_w)``, where ``w`` are the weights,
-    ``d_w`` the first derivative and ``dd_w`` the second derivative.
-    and dd_w the second derivative. The derivatives are computed analytically
-    for the Gaussian and Epanechnikov kernels.
+    Parameters
+    ----------
+    u : array-like
+        Normalized pairwise distances (x - x') / h.
+    h : float
+        Bandwidth (> 0).
+    kernel : {"gaussian", "epanechnikov", "epan"}
+        Kernel name.
+
+    Returns
+    -------
+    w : ndarray
+        K(u) / h.
+    dw : ndarray
+        d/dh [ K(u)/h ].
+    d2w : ndarray
+        d^2/dh^2 [ K(u)/h ].
     """
-    if kernel == "gaussian":
-        w = weights_gaussian(u, h)
-        d_w = w * ((u**2 - 1) / h)
-        dd_w = w * ((u**4 - 3 * u**2 + 1) / (h**2))
-    elif kernel == "epanechnikov":
-        # Epanechnikov kernel with compact support
-        mask = np.abs(u) <= 1
-        w = np.zeros_like(u)
-        d_w = np.zeros_like(u)
-        dd_w = np.zeros_like(u)
-        w[mask] = 0.75 * (1 - u[mask] ** 2) / h
-        d_w[mask] = 0.75 * ((-1 + 3 * u[mask] ** 2) / (h**2))
-        dd_w[mask] = 1.5 * ((1 - 6 * u[mask] ** 2) / (h**3))
+    u = np.asarray(u, dtype=float)
+    h = float(h)
+    if h <= 0:
+        raise ValueError("h must be positive")
+
+    k = kernel.lower()
+    if k == "gaussian":
+        K = np.exp(-0.5 * u * u) / _SQRT_2PI
+        Kp = -u * K
+        Kpp = (u * u - 1.0) * K
+    elif k in ("epanechnikov", "epan"):
+        mask = np.abs(u) <= 1.0
+        K = np.zeros_like(u, dtype=float)
+        Kp = np.zeros_like(u, dtype=float)
+        Kpp = np.zeros_like(u, dtype=float)
+        um = u[mask]
+        K[mask] = 0.75 * (1.0 - um * um)
+        Kp[mask] = -1.5 * um
+        Kpp[mask] = -1.5
     else:
-        raise ValueError(f"Unknown kernel '{kernel}'")
-    return w, d_w, dd_w
+        raise ValueError(f"Unknown kernel: {kernel}")
+
+    w = K / h
+    dw = -(K + u * Kp) / (h * h)
+    d2w = (2.0 * K + 4.0 * u * Kp + (u * u) * Kpp) / (h**3)
+    return w, dw, d2w
+
+
+def kernel_weights(u: np.ndarray, h: float, kernel: str) -> np.ndarray:
+    """
+    Compute kernel weights K(u)/h for given kernel.
+
+    Parameters
+    ----------
+    u : array-like
+        Normalized pairwise distances (x - x') / h.
+    h : float
+        Bandwidth (> 0).
+    kernel : {"gaussian", "epanechnikov", "epan"}
+        Kernel name.
+
+    Returns
+    -------
+    ndarray
+        K(u) / h.
+    """
+    k = kernel.lower()
+    if k == "gaussian":
+        return weights_gaussian(u, h)
+    elif k in ("epanechnikov", "epan"):
+        return weights_epanechnikov(u, h)
+    else:
+        raise ValueError(f"Unknown kernel: {kernel}")

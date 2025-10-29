@@ -2,10 +2,24 @@
 Hessband: Analytic-Hessian bandwidth selection for univariate kernel smoothers.
 
 This package provides tools for selecting bandwidths for Nadaraya–Watson
-regression using analytic derivatives of the leave-one-out cross-validation risk.
-The main entry point is `select_nw_bandwidth`, which returns an optimal
-bandwidth according to different optimisation strategies, including the
-analytic-Hessian method.
+regression and kernel density estimation (KDE) using analytic derivatives
+of cross-validation risk functions. It supports both leave-one-out
+cross-validation (LOOCV) for regression and least-squares cross-validation
+(LSCV) for density estimation.
+
+Key Features
+------------
+- Analytic gradients and Hessians for efficient optimization
+- Multiple bandwidth selection methods (Newton, grid search, golden section, Bayesian)
+- Support for Gaussian and Epanechnikov kernels
+- Fast implementations with minimal cross-validation evaluations
+
+Main Functions
+--------------
+select_nw_bandwidth : Select optimal bandwidth for Nadaraya-Watson regression
+select_kde_bandwidth : Select optimal bandwidth for kernel density estimation
+nw_predict : Make predictions using Nadaraya-Watson estimator
+lscv_generic : Compute LSCV score with analytic derivatives
 
 Example
 -------
@@ -19,6 +33,10 @@ Example
 >>> # Predict at new points
 >>> y_pred = nw_predict(X, y, X, h_opt)
 
+For KDE example:
+>>> from hessband import select_kde_bandwidth
+>>> x = np.random.normal(0, 1, 1000)
+>>> h_kde = select_kde_bandwidth(x, kernel='gauss', method='analytic')
 """
 
 from .kde import lscv_generic, select_kde_bandwidth

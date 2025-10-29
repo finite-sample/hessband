@@ -26,6 +26,11 @@ def test_nw_analytic_vs_grid():
         X, y, method="analytic", kernel="gaussian", h_bounds=(0.01, 0.5)
     )
     h_grid = select_nw_bandwidth(
-        X, y, method="grid", kernel="gaussian", h_bounds=(0.01, 0.5), grid_size=40
+        X,
+        y,
+        method="grid",
+        kernel="gaussian",
+        h_bounds=(0.01, 0.5),
+        grid_size=40,
     )
     assert abs(h_analytic - h_grid) < 0.05

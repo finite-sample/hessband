@@ -105,7 +105,15 @@ def newton_fd(
 
 
 def analytic_newton(
-    X, y, kernel, predict_fn, h_init, h_min=1e-3, folds=5, tol=1e-3, max_iter=10
+    X,
+    y,
+    kernel,
+    predict_fn,
+    h_init,
+    h_min=1e-3,
+    folds=5,
+    tol=1e-3,
+    max_iter=10,
 ):
     """
     Analytic Newton method for LOOCV risk minimisation.
@@ -259,30 +267,59 @@ def select_nw_bandwidth(
     """
     Select the optimal bandwidth for Nadaraya–Watson regression.
 
+    This function provides a unified interface for various bandwidth selection
+    methods for Nadaraya-Watson kernel regression. The analytic method uses
+    gradients and Hessians of the cross-validation risk for efficient optimization.
+
     Parameters
     ----------
     X : array-like, shape (n_samples,)
-        Input values.
+        Input values (univariate predictor variable).
     y : array-like, shape (n_samples,)
-        Target values.
-    kernel : str, optional (default='gaussian')
-        Kernel type ('gaussian' or 'epanechnikov').
-    method : str, optional (default='analytic')
-        Bandwidth selection method: one of {'analytic', 'grid', 'plugin',
-        'newton_fd', 'golden', 'bayes'}.
-    folds : int, optional (default=5)
-        Number of folds for cross-validation.
-    h_bounds : tuple, optional (default=(0.01, 1.0))
-        Lower and upper bounds for the bandwidth search.
-    grid_size : int, optional (default=30)
-        Number of grid points for grid search.
+        Target values (response variable).
+    kernel : {'gaussian', 'epanechnikov'}, default='gaussian'
+        Kernel function to use for regression.
+    method : {'analytic', 'grid', 'plugin', 'newton_fd', 'golden', 'bayes'},
+             default='analytic'
+        Bandwidth selection method:
+
+        - 'analytic': Newton optimization with analytic gradients/Hessians (recommended)
+        - 'grid': Exhaustive grid search over h_bounds
+        - 'plugin': Simple plug-in rule (fastest but less accurate)
+        - 'newton_fd': Newton optimization with finite-difference gradients
+        - 'golden': Golden-section search optimization
+        - 'bayes': Bayesian optimization (requires additional dependencies)
+    folds : int, default=5
+        Number of folds for cross-validation (ignored for 'plugin' method).
+    h_bounds : tuple of float, default=(0.01, 1.0)
+        (min_bandwidth, max_bandwidth) search bounds.
+    grid_size : int, default=30
+        Number of grid points for 'grid' method.
     init_bandwidth : float, optional
         Initial bandwidth for Newton-based methods. If None, uses plug-in rule.
 
     Returns
     -------
     float
-        Selected bandwidth.
+        Optimal bandwidth that minimizes cross-validation risk.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from hessband import select_nw_bandwidth, nw_predict
+    >>> # Generate sample data
+    >>> X = np.linspace(0, 1, 100)
+    >>> y = np.sin(2 * np.pi * X) + 0.1 * np.random.randn(100)
+    >>> # Select bandwidth using analytic method
+    >>> h_opt = select_nw_bandwidth(X, y, method='analytic')
+    >>> # Make predictions
+    >>> y_pred = nw_predict(X, y, X, h_opt)
+
+    Notes
+    -----
+    The 'analytic' method is generally recommended as it provides the accuracy
+    of grid search while requiring minimal computational cost (no cross-validation
+    evaluations during optimization).
     """
     X = np.asarray(X).ravel()
     y = np.asarray(y).ravel()

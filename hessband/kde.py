@@ -36,7 +36,43 @@ def _poly_mask(u: np.ndarray, mask: np.ndarray, expr):
     return out
 
 
+def _pairwise_sums(
+    u: np.ndarray,
+    K: Callable[[np.ndarray], np.ndarray],
+    Kp: Callable[[np.ndarray], np.ndarray],
+    Kpp: Callable[[np.ndarray], np.ndarray],
+    K2: Callable[[np.ndarray], np.ndarray],
+    K2p: Callable[[np.ndarray], np.ndarray],
+    K2pp: Callable[[np.ndarray], np.ndarray],
+    off: np.ndarray,
+) -> Tuple[float, float, float, float]:
+    """
+    Compute the paired sums that appear in the LSCV gradient and Hessian.
+
+    S_F  = sum_ij [ K2(u) + u K2'(u) ]
+    S_Fu = sum_ij [ u ( 2 K2'(u) + u K2''(u) ) ]
+    S_K  = sum_{i != j} [ K(u) + u K'(u) ]
+    S_Ku = sum_{i != j} [ u ( 2 K'(u) + u K''(u) ) ]
+    """
+    K2u = K2(u)
+    K2pu = K2p(u)
+    K2ppu = K2pp(u)
+
+    S_F = (K2u + u * K2pu).sum()
+    S_Fu = (u * (2.0 * K2pu + u * K2ppu)).sum()
+
+    Ku = K(u)
+    Kpu = Kp(u)
+    Kppu = Kpp(u)
+
+    S_K = (Ku + u * Kpu)[off].sum()
+    S_Ku = (u * (2.0 * Kpu + u * Kppu))[off].sum()
+    return float(S_F), float(S_Fu), float(S_K), float(S_Ku)
+
+
 # Gaussian kernel and derivatives
+
+
 def K_gauss(u):
     """Gaussian kernel."""
     return np.exp(-0.5 * u * u) / SQRT_2PI
@@ -120,7 +156,14 @@ def K2_epan_pp(u):
 KERNELS: Dict[
     str, Tuple[Callable, Callable, Callable, Callable, Callable, Callable]
 ] = {
-    "gauss": (K_gauss, K_gauss_p, K_gauss_pp, K2_gauss, K2_gauss_p, K2_gauss_pp),
+    "gauss": (
+        K_gauss,
+        K_gauss_p,
+        K_gauss_pp,
+        K2_gauss,
+        K2_gauss_p,
+        K2_gauss_pp,
+    ),
     "epan": (K_epan, K_epan_p, K_epan_pp, K2_epan, K2_epan_p, K2_epan_pp),
 }
 
@@ -129,26 +172,47 @@ KERNELS: Dict[
 # ---------------------------------------------------------------------------
 
 
-def lscv_generic(x: np.ndarray, h: float, kernel: str) -> Tuple[float, float, float]:
-    """Return (LSCV, gradient, Hessian) at bandwidth h for the chosen kernel."""
+def lscv_generic(x: np.ndarray, h: float, kernel: str):
+    """
+    Least-squares cross-validation for univariate KDE with analytic
+    gradient and Hessian with respect to h.
+
+    LSCV(h) = 1/(n^2 h) sum_{i,j} K2(u_ij)
+             - 2/(n(n-1) h) sum_{i != j} K(u_ij),
+    where u_ij = (x_i - x_j)/h and K2 is the kernel convolution K * K.
+
+    Returns
+    -------
+    score : float
+    grad  : float
+    hess  : float
+    """
+    if h <= 0:
+        raise ValueError("h must be positive")
     K, Kp, Kpp, K2, K2p, K2pp = KERNELS[kernel]
-    n = len(x)
+    x = np.asarray(x, dtype=float)
+    n = x.shape[0]
+    if n < 2:
+        raise ValueError("need at least two samples")
+
     u = (x[:, None] - x[None, :]) / h
-    # Score
+    off = ~np.eye(n, dtype=bool)
+
+    # score
     term1 = K2(u).sum() / (n**2 * h)
-    K_vals = K(u)
-    term2 = (K_vals.sum() - np.sum(np.diag(K_vals))) / (n * (n - 1) * h)
-    score = term1 - 2 * term2
-    # Gradient
-    S_F = (K2(u) + u * K2p(u)).sum()
-    S_K = (K_vals + u * Kp(u)).sum() - 0.0  # diagonal excluded automatically
-    grad = -S_F / (n**2 * h**2) + 2 * S_K / (n * (n - 1) * h**2)
-    # Hessian
-    S_F2 = (2 * K2p(u) + u * K2pp(u)).sum()
-    S_K2 = (2 * Kp(u) + u * Kpp(u)).sum()
-    hess = 2 * S_F / (n**2 * h**3) - S_F2 / (n**2 * h**2)
-    hess += -4 * S_K / (n * (n - 1) * h**3) + 2 * S_K2 / (n * (n - 1) * h**2)
-    return score, grad, hess
+    term2 = K(u)[off].sum() / (n * (n - 1) * h)
+    score = float(term1 - 2.0 * term2)
+
+    # gradient and Hessian
+    S_F, S_Fu, S_K, S_Ku = _pairwise_sums(u, K, Kp, Kpp, K2, K2p, K2pp, off)
+
+    grad = -S_F / (n**2 * h**2) + 2.0 * S_K / (n * (n - 1) * h**2)
+
+    hess = (2.0 * S_F + S_Fu) / (n**2 * h**3) - (2.0 * S_Ku + 4.0 * S_K) / (
+        n * (n - 1) * h**3
+    )
+
+    return score, float(grad), float(hess)
 
 
 def lscv_gauss(x, h):
@@ -208,27 +272,62 @@ def select_kde_bandwidth(
     h_init: Optional[float] = None,
 ) -> float:
     """
-    Select an optimal bandwidth for univariate KDE using LSCV.
+    Select an optimal bandwidth for univariate kernel density estimation using LSCV.
+
+    This function minimizes the least-squares cross-validation (LSCV) criterion
+    to select an optimal bandwidth for kernel density estimation. The analytic
+    method uses exact gradients and Hessians for efficient Newton optimization.
 
     Parameters
     ----------
-    x : array-like
-        Data samples.
-    kernel : str, optional
-        Kernel name: 'gauss' or 'epan'.
-    method : str, optional
-        Selection method: 'analytic' (Newton–Armijo), 'grid', or 'golden'.
-    h_bounds : tuple, optional
-        Lower and upper bounds for the search.
-    grid_size : int, optional
-        Number of grid points for grid search.
+    x : array-like, shape (n_samples,)
+        Data samples for density estimation.
+    kernel : {'gauss', 'epan'}, default='gauss'
+        Kernel function:
+
+        - 'gauss': Gaussian (normal) kernel
+        - 'epan': Epanechnikov kernel (compact support)
+    method : {'analytic', 'grid', 'golden'}, default='analytic'
+        Bandwidth selection method:
+
+        - 'analytic': Newton–Armijo with analytic derivatives (recommended)
+        - 'grid': Exhaustive grid search over h_bounds
+        - 'golden': Golden-section search optimization
+    h_bounds : tuple of float, default=(0.01, 1.0)
+        (min_bandwidth, max_bandwidth) search bounds.
+    grid_size : int, default=30
+        Number of grid points for 'grid' method.
     h_init : float, optional
-        Initial bandwidth for Newton optimisation. Defaults to plug-in estimate.
+        Initial bandwidth for Newton-based methods. If None, uses Silverman's
+        rule of thumb as starting point.
 
     Returns
     -------
     float
-        Selected bandwidth.
+        Optimal bandwidth that minimizes LSCV criterion.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from hessband import select_kde_bandwidth
+    >>> # Generate sample data from mixture distribution
+    >>> x = np.concatenate([
+    ...     np.random.normal(-2, 0.5, 200),
+    ...     np.random.normal(2, 1.0, 300)
+    ... ])
+    >>> # Select bandwidth using analytic method
+    >>> h_opt = select_kde_bandwidth(x, kernel='gauss', method='analytic')
+    >>> print(f"Optimal bandwidth: {h_opt:.4f}")
+
+    Notes
+    -----
+    The LSCV criterion is defined as:
+
+    LSCV(h) = ∫ f̂ₕ²(x) dx - 2∫ f̂ₕ(x) f(x) dx
+
+    where f̂ₕ is the kernel density estimate with bandwidth h and f is the true
+    (unknown) density. The analytic method provides exact derivatives, making
+    optimization very efficient compared to finite-difference approaches.
     """
     x = np.asarray(x).ravel()
     a, b = h_bounds

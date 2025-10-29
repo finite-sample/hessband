@@ -1,26 +1,40 @@
 # Hessband: Analytic Bandwidth Selector
 
-[![image](https://github.com/finite-sample/hessband/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/hessband/actions/workflows/ci.yml)
+[![CI](https://github.com/finite-sample/hessband/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/hessband/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/hessband.svg)](https://pypi.org/project/hessband/)
 [![PyPI Downloads](https://static.pepy.tech/badge/hessband)](https://pepy.tech/projects/hessband)
 [![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/hessband/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 Hessband is a Python package for selecting bandwidths in univariate smoothing.  It provides analytic gradients and Hessians of the leave‑one‑out cross‑validation (LOOCV) risk for Nadaraya–Watson regression and least‑squares cross‑validation (LSCV) for kernel density estimation (KDE).  Bandwidth selectors include grid search, plug‑in rules, finite‑difference Newton, analytic Newton, golden‑section search, and Bayesian optimisation.
 
 ## Installation
 
-To install from source, navigate to the directory containing `hessband` and run:
+### From PyPI (Recommended)
 
 ```bash
-pip install hessband-0.1.0.tar.gz
+pip install hessband
 ```
 
-Alternatively, you can unpack the tarball and install using `setup.py`:
+### From Source
+
+To install from source, clone the repository and install:
 
 ```bash
-tar -xzvf hessband-0.1.0.tar.gz
+git clone https://github.com/finite-sample/hessband.git
 cd hessband
 pip install .
+```
+
+### Development Installation
+
+For development, install in editable mode with test dependencies:
+
+```bash
+git clone https://github.com/finite-sample/hessband.git
+cd hessband
+pip install -e ".[dev]"
 ```
 
 ## Usage Example

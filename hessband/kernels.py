@@ -12,6 +12,7 @@
 #   d2w/dh2 = w * (u^4 - 5u^2 + 2) / h^2
 
 from __future__ import annotations
+
 import numpy as np
 
 __all__ = [

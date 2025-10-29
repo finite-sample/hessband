@@ -1,5 +1,6 @@
 # tests/test_kde_lscv_grad_hess.py
 import numpy as np
+
 from hessband.kde import lscv_generic
 
 

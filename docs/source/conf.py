@@ -1,23 +1,24 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))
 
-project = 'hessband'
-copyright = '2024, Gaurav Sood'
-author = 'Gaurav Sood'
+sys.path.insert(0, os.path.abspath("../../"))
+
+project = "hessband"
+copyright = "2024, Gaurav Sood"
+author = "Gaurav Sood"
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
-    'sphinx_autodoc_typehints',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",
 ]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
-html_theme = 'furo'
-html_static_path = ['_static']
+html_theme = "furo"
+html_static_path = ["_static"]
 
 # Furo theme options
 html_theme_options = {
@@ -32,6 +33,6 @@ html_theme_options = {
     },
 }
 
-autodoc_member_order = 'bysource'
+autodoc_member_order = "bysource"
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True

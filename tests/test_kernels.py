@@ -1,5 +1,6 @@
 # tests/test_kernels.py
 import numpy as np
+
 from hessband.kernels import kernel_derivatives
 
 

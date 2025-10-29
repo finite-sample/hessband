@@ -1,5 +1,6 @@
 # tests/test_kde_lscv.py
 import numpy as np
+
 from hessband.kde import lscv_generic
 
 

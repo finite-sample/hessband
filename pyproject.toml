@@ -10,14 +10,14 @@ authors = [
 requires-python = ">=3.11"
 keywords = [
     "bandwidth",
-    "kernel", 
+    "kernel",
     "regression",
     "density-estimation",
     "cross-validation",
     "statistics",
     "smoothing",
     "nadaraya-watson",
-    "kde"
+    "kde",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -41,7 +41,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black",
-    "isort", 
+    "isort",
     "pyproject-flake8",
     "pytest",
 ]

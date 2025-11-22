@@ -42,13 +42,6 @@ dependencies = [
     "scipy",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "black",
-    "isort",
-    "pyproject-flake8",
-    "pytest",
-]
 
 [project.urls]
 Homepage = "https://github.com/finite-sample/hessband"
@@ -59,6 +52,15 @@ Changelog = "https://github.com/finite-sample/hessband/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hessband"]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1.29",
+    "sphinx-autodoc-typehints>=1.25",
+    "sphinx-copybutton>=0.5",
+    "myst-parser>=2.0",
+]
 
 [dependency-groups]
 dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
@@ -82,20 +84,4 @@ warn_return_any = true
 warn_unused_configs = true
 check_untyped_defs = true
 
-[tool.isort]
-profile = "black"
-line_length = 88
 
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "W503", "E501"]
-
-[tool.black]
-line-length = 88
-
-[tool.hatch.build.targets.wheel]
-packages = ["hessband"]
-
-[dependency-groups]
-dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0"]
-test = ["pytest>=7.0"]

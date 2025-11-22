@@ -11,7 +11,7 @@ The analytic formulas are based on convolution of kernels and their
 derivatives; see the accompanying paper for details.
 """
 
-from typing import Callable, Dict, Optional, Tuple
+from collections.abc import Callable
 
 import numpy as np
 
@@ -45,7 +45,7 @@ def _pairwise_sums(
     K2p: Callable[[np.ndarray], np.ndarray],
     K2pp: Callable[[np.ndarray], np.ndarray],
     off: np.ndarray,
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """
     Compute the paired sums that appear in the LSCV gradient and Hessian.
 
@@ -153,8 +153,8 @@ def K2_epan_pp(u):
     )
 
 
-KERNELS: Dict[
-    str, Tuple[Callable, Callable, Callable, Callable, Callable, Callable]
+KERNELS: dict[
+    str, tuple[Callable, Callable, Callable, Callable, Callable, Callable]
 ] = {
     "gauss": (
         K_gauss,
@@ -233,10 +233,10 @@ def lscv_epan(x, h):
 def newton_opt(
     x: np.ndarray,
     h0: float,
-    score_grad_hess: Callable[[np.ndarray, float], Tuple[float, float, float]],
+    score_grad_hess: Callable[[np.ndarray, float], tuple[float, float, float]],
     tol: float = 1e-5,
     max_iter: int = 12,
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Newton–Armijo optimisation to minimise the LSCV score."""
     h, evals = h0, 0
     for _ in range(max_iter):
@@ -269,7 +269,7 @@ def select_kde_bandwidth(
     method: str = "analytic",
     h_bounds=(0.01, 1.0),
     grid_size: int = 30,
-    h_init: Optional[float] = None,
+    h_init: float | None = None,
 ) -> float:
     """
     Select an optimal bandwidth for univariate kernel density estimation using LSCV.

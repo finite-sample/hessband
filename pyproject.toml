@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling>=1.21.1"]
+build-backend = "hatchling.build"
+
 [project]
 name = "hessband"
 version = "0.1.2"
@@ -53,13 +57,30 @@ Documentation = "https://finite-sample.github.io/hessband/"
 Issues = "https://github.com/finite-sample/hessband/issues"
 Changelog = "https://github.com/finite-sample/hessband/blob/main/CHANGELOG.md"
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.hatch.build.targets.wheel]
+packages = ["hessband"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["hessband*"]
+[dependency-groups]
+dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
+test = ["pytest>=7.0"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
 
 [tool.isort]
 profile = "black"
@@ -71,3 +92,10 @@ extend-ignore = ["E203", "W503", "E501"]
 
 [tool.black]
 line-length = 88
+
+[tool.hatch.build.targets.wheel]
+packages = ["hessband"]
+
+[dependency-groups]
+dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0"]
+test = ["pytest>=7.0"]

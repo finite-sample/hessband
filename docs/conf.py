@@ -1,30 +1,32 @@
 # Configuration file for the Sphinx documentation builder.
 
-project = 'hessband'
-author = 'Gaurav Sood'
-release = '0.1.2'
+from importlib import metadata
+
+project = metadata.metadata("hessband")["Name"]
+author = metadata.metadata("hessband")["Author"]
+release = metadata.version("hessband")
 
 # -- General configuration ---------------------------------------------------
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.autosummary',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.autosummary",
 ]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
-html_theme = 'furo'
+html_theme = "furo"
 html_title = f"{project} v{release}"
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # -- Extension configuration -------------------------------------------------
 autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'show-inheritance': True,
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
 }
 
 napoleon_google_docstring = True

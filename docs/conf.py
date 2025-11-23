@@ -3,7 +3,13 @@
 from importlib import metadata
 
 project = metadata.metadata("hessband")["Name"]
-author = metadata.metadata("hessband")["Author"]
+# Extract author name from authors list in pyproject.toml
+author_info = metadata.metadata("hessband").get("Author-email", "")
+if author_info:
+    # Parse "Name <email>" format
+    author = author_info.split(" <")[0] if " <" in author_info else author_info
+else:
+    author = "Gaurav Sood"  # fallback
 release = metadata.version("hessband")
 
 # -- General configuration ---------------------------------------------------

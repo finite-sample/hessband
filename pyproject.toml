@@ -50,9 +50,6 @@ Documentation = "https://finite-sample.github.io/hessband/"
 Issues = "https://github.com/finite-sample/hessband/issues"
 Changelog = "https://github.com/finite-sample/hessband/blob/main/CHANGELOG.md"
 
-[tool.hatch.build.targets.wheel]
-packages = ["hessband"]
-
 [project.optional-dependencies]
 docs = [
     "sphinx>=7.0",

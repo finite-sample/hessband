@@ -161,6 +161,7 @@ def newton_fd(
         h = h_new
     return h
 
+
 def analytic_newton(
     X: np.ndarray,
     y: np.ndarray,
@@ -341,9 +342,7 @@ def bayes_opt_bandwidth(
                     normalize_y=True,
                 ).fit(X_train, y_train)
                 # If noise_level hits lower bound, relax it
-                if any(
-                    issubclass(wi.category, ConvergenceWarning) for wi in w
-                ):
+                if any(issubclass(wi.category, ConvergenceWarning) for wi in w):
                     lb, ub = wk.noise_level_bounds
                     new_lb = max(lb / 10.0, 1e-8)
                     wk = WhiteKernel(

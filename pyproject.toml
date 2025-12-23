@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hessband"
-version = "0.1.2"
+version = "0.2.0"
 description = "Analytic-Hessian bandwidth selection for univariate kernel regression"
 readme = "README.md"
 license = {text = "MIT"}

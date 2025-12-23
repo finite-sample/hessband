@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 __all__ = [
@@ -26,48 +28,60 @@ _SQRT_2PI = np.sqrt(2.0 * np.pi)
 
 
 def weights_gaussian(u: np.ndarray, h: float) -> np.ndarray:
-    """Gaussian kernel weight K(u)/h with K(u)=phi(u)."""
+    """Computes Gaussian kernel weights.
+
+    Args:
+        u: Normalized distances (x - x') / h.
+        h: Bandwidth (> 0).
+
+    Returns:
+        The kernel weights K(u) / h for the Gaussian kernel.
+    """
     u = np.asarray(u, dtype=float)
     h = float(h)
     if h <= 0:
         raise ValueError("h must be positive")
     K = np.exp(-0.5 * u * u) / _SQRT_2PI
-    return K / h
+    return cast(np.ndarray, K / h)
 
 
 def weights_epanechnikov(u: np.ndarray, h: float) -> np.ndarray:
-    """Epanechnikov kernel weight K(u)/h with K(u)=0.75*(1-u^2) on |u|<=1."""
+    """Computes Epanechnikov kernel weights.
+
+    Args:
+        u: Normalized distances (x - x') / h.
+        h: Bandwidth (> 0).
+
+    Returns:
+        The kernel weights K(u) / h for the Epanechnikov kernel.
+    """
     u = np.asarray(u, dtype=float)
     h = float(h)
     if h <= 0:
         raise ValueError("h must be positive")
     base = 0.75 * np.maximum(0.0, 1.0 - u * u)
-    return base / h
+    return cast(np.ndarray, base / h)
 
 
-def kernel_derivatives(u: np.ndarray, h: float, kernel: str):
-    """
-    Return (w, dw, d2w) for w(h)=K(u)/h where u=(x-x')/h.
-    Derivatives are with respect to h and ignore support-boundary motion
-    for compact kernels, which is the standard practical convention.
+def kernel_derivatives(
+    u: np.ndarray, h: float, kernel: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Computes kernel weights and their derivatives.
 
-    Parameters
-    ----------
-    u : array-like
-        Normalized pairwise distances (x - x') / h.
-    h : float
-        Bandwidth (> 0).
-    kernel : {"gaussian", "epanechnikov", "epan"}
-        Kernel name.
+    Derivatives are with respect to the bandwidth `h` and ignore
+    support-boundary motion for compact kernels, which is the standard
+    practical convention.
 
-    Returns
-    -------
-    w : ndarray
-        K(u) / h.
-    dw : ndarray
-        d/dh [ K(u)/h ].
-    d2w : ndarray
-        d^2/dh^2 [ K(u)/h ].
+    Args:
+        u: Normalized pairwise distances (x - x') / h.
+        h: Bandwidth (> 0).
+        kernel: Kernel name ("gaussian", "epanechnikov", or "epan").
+
+    Returns:
+        A tuple containing:
+            - w: The kernel weights K(u) / h.
+            - dw: The first derivative d/dh [K(u) / h].
+            - d2w: The second derivative d^2/dh^2 [K(u) / h].
     """
     u = np.asarray(u, dtype=float)
     h = float(h)
@@ -98,22 +112,15 @@ def kernel_derivatives(u: np.ndarray, h: float, kernel: str):
 
 
 def kernel_weights(u: np.ndarray, h: float, kernel: str) -> np.ndarray:
-    """
-    Compute kernel weights K(u)/h for given kernel.
+    """Computes kernel weights K(u)/h for a given kernel.
 
-    Parameters
-    ----------
-    u : array-like
-        Normalized pairwise distances (x - x') / h.
-    h : float
-        Bandwidth (> 0).
-    kernel : {"gaussian", "epanechnikov", "epan"}
-        Kernel name.
+    Args:
+        u: Normalized pairwise distances (x - x') / h.
+        h: Bandwidth (> 0).
+        kernel: Kernel name ("gaussian", "epanechnikov", or "epan").
 
-    Returns
-    -------
-    ndarray
-        K(u) / h.
+    Returns:
+        The kernel weights K(u) / h.
     """
     k = kernel.lower()
     if k == "gaussian":

@@ -1,20 +1,16 @@
-"""
-Bandwidth selection methods for univariate kernel regression.
-
-This module provides several bandwidth selectors, including grid search,
-plug-in rules, finite-difference Newton, analytic Newton (analytic-Hessian),
-golden-section search and Bayesian optimisation. A high-level function
-`select_nw_bandwidth` orchestrates the selection process.
-"""
+from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Callable
 from math import erf
+from typing import cast
 
 import numpy as np
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import ConstantKernel as C
-from sklearn.gaussian_process.kernels import Matern, WhiteKernel
+from sklearn.exceptions import ConvergenceWarning  # type: ignore
+from sklearn.gaussian_process import GaussianProcessRegressor  # type: ignore
+from sklearn.gaussian_process.kernels import ConstantKernel as C  # type: ignore
+from sklearn.gaussian_process.kernels import Matern, WhiteKernel  # type: ignore
 
 from .cv import CVScorer
 from .kernels import kernel_derivatives, kernel_weights
@@ -35,8 +31,25 @@ __all__ = [
 # ----------------------------------------------------------------------------
 
 
-def nw_predict(X_train, y_train, X_test, h, kernel="gaussian"):
-    """Compute Nadaraya–Watson predictions using a specified kernel."""
+def nw_predict(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    h: float,
+    kernel: str = "gaussian",
+) -> np.ndarray:
+    """Computes Nadaraya-Watson predictions.
+
+    Args:
+        X_train: Training input values.
+        y_train: Training target values.
+        X_test: Test input values.
+        h: Bandwidth.
+        kernel: Kernel to use ('gaussian' or 'epanechnikov').
+
+    Returns:
+        The predicted values for X_test.
+    """
     X_train = np.asarray(X_train).ravel()
     X_test = np.asarray(X_test).ravel()
     u = (X_test[:, None] - X_train[None, :]) / h
@@ -47,7 +60,7 @@ def nw_predict(X_train, y_train, X_test, h, kernel="gaussian"):
     if np.any(zero_mask):
         denom[zero_mask] = len(X_train)
         numerator[zero_mask] = y_train.sum()
-    return numerator / denom
+    return cast(np.ndarray, numerator / denom)
 
 
 # ----------------------------------------------------------------------------
@@ -55,37 +68,82 @@ def nw_predict(X_train, y_train, X_test, h, kernel="gaussian"):
 # ----------------------------------------------------------------------------
 
 
-def grid_search_cv(X, y, kernel, predict_fn, h_grid, folds=5):
-    """Grid search for the best bandwidth using cross-validation."""
+def grid_search_cv(
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str,
+    predict_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, float, str], np.ndarray],
+    h_grid: np.ndarray,
+    folds: int = 5,
+) -> float:
+    """Performs grid search for bandwidth selection.
+
+    Args:
+        X: Input values.
+        y: Target values.
+        kernel: Kernel to use.
+        predict_fn: Prediction function.
+        h_grid: Grid of bandwidths to search over.
+        folds: Number of folds for cross-validation.
+
+    Returns:
+        The best bandwidth found.
+    """
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     best_h, best_score = None, np.inf
     for h in h_grid:
         score = scorer.score(predict_fn, h)
         if score < best_score:
             best_score, best_h = score, h
-    return best_h
+    assert best_h is not None
+    return cast(float, best_h)
 
 
-def plug_in_bandwidth(X):
-    """Plug-in bandwidth based on Silverman's rule of thumb."""
+def plug_in_bandwidth(X: np.ndarray) -> float:
+    """Computes a plug-in bandwidth.
+
+    Uses Silverman's rule of thumb.
+
+    Args:
+        X: Input values.
+
+    Returns:
+        The plug-in bandwidth.
+    """
     sigma = np.std(np.asarray(X).ravel(), ddof=1)
     n = len(X)
-    return 1.06 * sigma * n ** (-1 / 5)
+    return cast(float, 1.06 * sigma * n ** (-1 / 5))
 
 
 def newton_fd(
-    X,
-    y,
-    kernel,
-    predict_fn,
-    h_init,
-    h_min=1e-3,
-    folds=5,
-    tol=1e-3,
-    max_iter=10,
-    eps=1e-4,
-):
-    """Finite-difference Newton method for bandwidth selection."""
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str,
+    predict_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, float, str], np.ndarray],
+    h_init: float,
+    h_min: float = 1e-3,
+    folds: int = 5,
+    tol: float = 1e-3,
+    max_iter: int = 10,
+    eps: float = 1e-4,
+) -> float:
+    """Finite-difference Newton method for bandwidth selection.
+
+    Args:
+        X: Input values.
+        y: Target values.
+        kernel: Kernel to use.
+        predict_fn: Prediction function.
+        h_init: Initial bandwidth.
+        h_min: Minimum bandwidth.
+        folds: Number of folds for cross-validation.
+        tol: Tolerance for convergence.
+        max_iter: Maximum number of iterations.
+        eps: Epsilon for finite differences.
+
+    Returns:
+        The optimal bandwidth.
+    """
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     h = max(h_init, h_min)
     for _ in range(max_iter):
@@ -103,25 +161,38 @@ def newton_fd(
         h = h_new
     return h
 
-
 def analytic_newton(
-    X,
-    y,
-    kernel,
-    predict_fn,
-    h_init,
-    h_min=1e-3,
-    folds=5,
-    tol=1e-3,
-    max_iter=10,
-):
-    """
-    Analytic Newton method for LOOCV risk minimisation.
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str,
+    predict_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, float, str], np.ndarray],
+    h_init: float,
+    h_min: float = 1e-3,
+    folds: int = 5,
+    tol: float = 1e-3,
+    max_iter: int = 10,
+) -> float:
+    """Analytic Newton method for LOOCV risk minimization.
+
     Returns the bandwidth without performing CV evaluations in the loop.
+
+    Args:
+        X: Input values.
+        y: Target values.
+        kernel: Kernel to use.
+        predict_fn: Prediction function.
+        h_init: Initial bandwidth.
+        h_min: Minimum bandwidth.
+        folds: Number of folds for cross-validation.
+        tol: Tolerance for convergence.
+        max_iter: Maximum number of iterations.
+
+    Returns:
+        The optimal bandwidth.
     """
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
 
-    def obj_grad_hess(h):
+    def obj_grad_hess(h: float) -> tuple[float, float, float]:
         grad, hess, obj = 0.0, 0.0, 0.0
         total = 0
         for train_idx, test_idx in scorer.kf.split(scorer.X):
@@ -177,8 +248,33 @@ def analytic_newton(
     return h
 
 
-def golden_section(X, y, kernel, predict_fn, a, b, folds=5, tol=1e-3, max_iter=20):
-    """Golden-section search for bandwidth selection."""
+def golden_section(
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str,
+    predict_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, float, str], np.ndarray],
+    a: float,
+    b: float,
+    folds: int = 5,
+    tol: float = 1e-3,
+    max_iter: int = 20,
+) -> float:
+    """Golden-section search for bandwidth selection.
+
+    Args:
+        X: Input values.
+        y: Target values.
+        kernel: Kernel to use.
+        predict_fn: Prediction function.
+        a: Lower bound of the search interval.
+        b: Upper bound of the search interval.
+        folds: Number of folds for cross-validation.
+        tol: Tolerance for convergence.
+        max_iter: Maximum number of iterations.
+
+    Returns:
+        The optimal bandwidth.
+    """
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     phi = (1 + np.sqrt(5)) / 2
     c, d = b - (b - a) / phi, a + (b - a) / phi
@@ -200,9 +296,32 @@ def golden_section(X, y, kernel, predict_fn, a, b, folds=5, tol=1e-3, max_iter=2
 
 
 def bayes_opt_bandwidth(
-    X, y, kernel, predict_fn, a, b, folds=5, init_points=5, n_iter=10
-):
-    """Bayesian optimisation for bandwidth selection."""
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str,
+    predict_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, float, str], np.ndarray],
+    a: float,
+    b: float,
+    folds: int = 5,
+    init_points: int = 5,
+    n_iter: int = 10,
+) -> float:
+    """Bayesian optimization for bandwidth selection.
+
+    Args:
+        X: Input values.
+        y: Target values.
+        kernel: Kernel to use.
+        predict_fn: Prediction function.
+        a: Lower bound of the search interval.
+        b: Upper bound of the search interval.
+        folds: Number of folds for cross-validation.
+        init_points: Number of initial points for Bayesian optimization.
+        n_iter: Number of iterations for Bayesian optimization.
+
+    Returns:
+        The optimal bandwidth.
+    """
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
     # Initial design points
     Xs = np.linspace(a, b, init_points)
@@ -223,7 +342,7 @@ def bayes_opt_bandwidth(
                 ).fit(X_train, y_train)
                 # If noise_level hits lower bound, relax it
                 if any(
-                    issubclass(wi.category, warnings.ConvergenceWarning) for wi in w
+                    issubclass(wi.category, ConvergenceWarning) for wi in w
                 ):
                     lb, ub = wk.noise_level_bounds
                     new_lb = max(lb / 10.0, 1e-8)
@@ -255,71 +374,37 @@ def bayes_opt_bandwidth(
 
 
 def select_nw_bandwidth(
-    X,
-    y,
-    kernel="gaussian",
-    method="analytic",
-    folds=5,
-    h_bounds=(0.01, 1.0),
-    grid_size=30,
-    init_bandwidth=None,
-):
-    """
-    Select the optimal bandwidth for Nadaraya–Watson regression.
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel: str = "gaussian",
+    method: str = "analytic",
+    folds: int = 5,
+    h_bounds: tuple[float, float] = (0.01, 1.0),
+    grid_size: int = 30,
+    init_bandwidth: float | None = None,
+) -> float:
+    """Selects the optimal bandwidth for Nadaraya-Watson regression.
 
     This function provides a unified interface for various bandwidth selection
     methods for Nadaraya-Watson kernel regression. The analytic method uses
-    gradients and Hessians of the cross-validation risk for efficient optimization.
+    gradients and Hessians of the cross-validation risk for efficient
+    optimization.
 
-    Parameters
-    ----------
-    X : array-like, shape (n_samples,)
-        Input values (univariate predictor variable).
-    y : array-like, shape (n_samples,)
-        Target values (response variable).
-    kernel : {'gaussian', 'epanechnikov'}, default='gaussian'
-        Kernel function to use for regression.
-    method : {'analytic', 'grid', 'plugin', 'newton_fd', 'golden', 'bayes'},
-             default='analytic'
-        Bandwidth selection method:
+    Args:
+        X: Input values (univariate predictor variable).
+        y: Target values (response variable).
+        kernel: Kernel function to use for regression ('gaussian' or
+            'epanechnikov').
+        method: Bandwidth selection method.
+        folds: Number of folds for cross-validation (ignored for 'plugin'
+            method).
+        h_bounds: (min_bandwidth, max_bandwidth) search bounds.
+        grid_size: Number of grid points for 'grid' method.
+        init_bandwidth: Initial bandwidth for Newton-based methods. If None,
+            uses plug-in rule.
 
-        - 'analytic': Newton optimization with analytic gradients/Hessians (recommended)
-        - 'grid': Exhaustive grid search over h_bounds
-        - 'plugin': Simple plug-in rule (fastest but less accurate)
-        - 'newton_fd': Newton optimization with finite-difference gradients
-        - 'golden': Golden-section search optimization
-        - 'bayes': Bayesian optimization (requires additional dependencies)
-    folds : int, default=5
-        Number of folds for cross-validation (ignored for 'plugin' method).
-    h_bounds : tuple of float, default=(0.01, 1.0)
-        (min_bandwidth, max_bandwidth) search bounds.
-    grid_size : int, default=30
-        Number of grid points for 'grid' method.
-    init_bandwidth : float, optional
-        Initial bandwidth for Newton-based methods. If None, uses plug-in rule.
-
-    Returns
-    -------
-    float
-        Optimal bandwidth that minimizes cross-validation risk.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from hessband import select_nw_bandwidth, nw_predict
-    >>> # Generate sample data
-    >>> X = np.linspace(0, 1, 100)
-    >>> y = np.sin(2 * np.pi * X) + 0.1 * np.random.randn(100)
-    >>> # Select bandwidth using analytic method
-    >>> h_opt = select_nw_bandwidth(X, y, method='analytic')
-    >>> # Make predictions
-    >>> y_pred = nw_predict(X, y, X, h_opt)
-
-    Notes
-    -----
-    The 'analytic' method is generally recommended as it provides the accuracy
-    of grid search while requiring minimal computational cost (no cross-validation
-    evaluations during optimization).
+    Returns:
+        The optimal bandwidth that minimizes cross-validation risk.
     """
     X = np.asarray(X).ravel()
     y = np.asarray(y).ravel()

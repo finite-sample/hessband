@@ -4,7 +4,7 @@ Kernel density estimation (KDE) bandwidth selectors with analytic gradients.
 This module implements leave‑one‑out least‑squares cross‑validation (LSCV) for
 univariate KDE with Gaussian and Epanechnikov kernels.  It provides analytic
 expressions for the cross‑validation score, gradient and Hessian with respect
-to the bandwidth.  A Newton–Armijo optimiser is included to select the optimal
+to the bandwidth.  A Newton–Armijo optimizer is included to select the optimal
 bandwidth without numerical differencing.
 
 The analytic formulas are based on convolution of kernels and their
@@ -172,20 +172,26 @@ KERNELS: dict[
 # ---------------------------------------------------------------------------
 
 
-def lscv_generic(x: np.ndarray, h: float, kernel: str):
-    """
-    Least-squares cross-validation for univariate KDE with analytic
-    gradient and Hessian with respect to h.
+def lscv_generic(x: np.ndarray, h: float, kernel: str) -> tuple[float, float, float]:
+    """Least-squares cross-validation for univariate KDE.
 
-    LSCV(h) = 1/(n^2 h) sum_{i,j} K2(u_ij)
-             - 2/(n(n-1) h) sum_{i != j} K(u_ij),
+    Calculates the LSCV score, gradient, and Hessian with respect to the
+    bandwidth `h` for univariate kernel density estimation.
+
+    The LSCV criterion is defined as:
+    LSCV(h) = 1/(n^2 h) sum_{i,j} K2(u_ij) - 2/(n(n-1) h) sum_{i != j} K(u_ij),
     where u_ij = (x_i - x_j)/h and K2 is the kernel convolution K * K.
 
-    Returns
-    -------
-    score : float
-    grad  : float
-    hess  : float
+    Args:
+        x: The input data points.
+        h: The bandwidth.
+        kernel: The kernel to use ('gauss' or 'epan').
+
+    Returns:
+        A tuple containing:
+            - score: The LSCV score.
+            - grad: The gradient of the LSCV score with respect to `h`.
+            - hess: The Hessian of the LSCV score with respect to `h`.
     """
     if h <= 0:
         raise ValueError("h must be positive")
@@ -226,7 +232,7 @@ def lscv_epan(x, h):
 
 
 # ---------------------------------------------------------------------------
-# Newton–Armijo optimiser for scalar bandwidth
+# Newton–Armijo optimizer for scalar bandwidth
 # ---------------------------------------------------------------------------
 
 
@@ -237,7 +243,7 @@ def newton_opt(
     tol: float = 1e-5,
     max_iter: int = 12,
 ) -> tuple[float, int]:
-    """Newton–Armijo optimisation to minimise the LSCV score."""
+    """Newton–Armijo optimization to minimize the LSCV score."""
     h, evals = h0, 0
     for _ in range(max_iter):
         f, g, H = score_grad_hess(x, h)

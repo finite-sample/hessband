@@ -7,7 +7,8 @@ Analytic-Hessian bandwidth selection for univariate kernel regression.
    :maxdepth: 2
    :caption: Contents:
 
-   api
+   examples
+   api/index
 
 Indices and tables
 ==================

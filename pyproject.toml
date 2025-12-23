@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling>=1.21.1"]
-build-backend = "hatchling.build"
+requires = ["uv_build"]
+build-backend = "uv_build"
 
 [project]
 name = "hessband"
@@ -48,20 +48,24 @@ Homepage = "https://github.com/finite-sample/hessband"
 Repository = "https://github.com/finite-sample/hessband"
 Documentation = "https://finite-sample.github.io/hessband/"
 Issues = "https://github.com/finite-sample/hessband/issues"
-Changelog = "https://github.com/finite-sample/hessband/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+
+[dependency-groups]
+dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
+test = ["pytest>=7.0"]
 docs = [
     "sphinx>=7.0",
     "furo>=2024.1.29",
     "sphinx-autodoc-typehints>=1.25",
     "sphinx-copybutton>=0.5",
     "myst-parser>=2.0",
+    "nbsphinx>=0.9.3",
+    "jupyter",
+    "ipython",
+    "matplotlib",
+    "pandas",
 ]
-
-[dependency-groups]
-dev = ["pytest>=7.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
-test = ["pytest>=7.0"]
 
 [tool.ruff]
 line-length = 88
@@ -80,5 +84,8 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 check_untyped_defs = true
+
+[tool.uv.build-backend]
+module-root = ""
 
 

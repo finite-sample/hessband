@@ -1,0 +1,2 @@
+.. automodule:: hessband.kernels
+   :members:

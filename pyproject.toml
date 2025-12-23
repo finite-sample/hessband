@@ -7,7 +7,7 @@ name = "hessband"
 version = "0.2.0"
 description = "Analytic-Hessian bandwidth selection for univariate kernel regression"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 authors = [
     { name = "Gaurav Sood", email = "gsood07@gmail.com" }
 ]

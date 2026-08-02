@@ -10,13 +10,6 @@ Hessband: Analytic-Hessian bandwidth selection for univariate kernel smoothers.
 
 import warnings
 
-warnings.warn(
-    "hessband is deprecated. Use 'pip install hbw' instead. "
-    "See https://github.com/finite-sample/hbw",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
 from .kde import lscv_generic, select_kde_bandwidth
 from .selectors import (
     analytic_newton,
@@ -27,6 +20,16 @@ from .selectors import (
     nw_predict,
     plug_in_bandwidth,
     select_nw_bandwidth,
+)
+
+# Emitted after the re-exports rather than before them, so the imports stay at
+# the top of the module and ruff's E402 does not fire. Import order does not
+# change when the user sees this: it is raised either way by `import hessband`.
+warnings.warn(
+    "hessband is deprecated. Use 'pip install hbw' instead. "
+    "See https://github.com/finite-sample/hbw",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 __all__ = [

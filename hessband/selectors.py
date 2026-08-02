@@ -173,15 +173,19 @@ def analytic_newton(
     tol: float = 1e-3,
     max_iter: int = 10,
 ) -> float:
-    """Analytic Newton method for LOOCV risk minimization.
+    """Analytic Newton method for K-fold CV risk minimization.
 
-    Returns the bandwidth without performing CV evaluations in the loop.
+    The gradient and Hessian are closed-form derivatives of the
+    Nadaraya-Watson CV risk, so this routine can only optimize the
+    Nadaraya-Watson estimator; unlike the other selectors in this module it
+    cannot dispatch to an arbitrary `predict_fn`.
 
     Args:
         X: Input values.
         y: Target values.
         kernel: Kernel to use.
-        predict_fn: Prediction function.
+        predict_fn: Prediction function. Must be `nw_predict`; any other
+            callable is rejected rather than silently ignored.
         h_init: Initial bandwidth.
         h_min: Minimum bandwidth.
         folds: Number of folds for cross-validation.
@@ -190,7 +194,18 @@ def analytic_newton(
 
     Returns:
         The optimal bandwidth.
+
+    Raises:
+        ValueError: If `predict_fn` is not `nw_predict`.
     """
+    if predict_fn is not nw_predict:
+        raise ValueError(
+            "analytic_newton differentiates the Nadaraya-Watson CV risk in "
+            "closed form and cannot optimize a different estimator; got "
+            f"predict_fn={getattr(predict_fn, '__name__', predict_fn)!r}. "
+            "Use newton_fd, grid_search_cv or golden_section for other "
+            "prediction functions."
+        )
     scorer = CVScorer(X, y, folds=folds, kernel=kernel)
 
     def obj_grad_hess(h: float) -> tuple[float, float, float]:
@@ -226,7 +241,15 @@ def analytic_newton(
             grad += -2 * np.sum(residual * dm)
             hess += 2 * np.sum(dm**2 - residual * ddm)
             total += len(yte)
-        return obj / total, grad, hess
+        # ``obj`` is a mean, so its derivatives must be divided by the same
+        # count. Returning sums here leaves grad and hess a factor of ``total``
+        # too large, which does not change the Newton direction (the factor
+        # cancels in -grad/hess) but inflates the Armijo threshold
+        # ``c1 * alpha * grad * direction`` by that same factor. Once
+        # c1 * total >~ 1 the sufficient-decrease test can no longer be met,
+        # the line search exhausts its alphas and the method returns its
+        # starting point.
+        return obj / total, grad / total, hess / total
 
     h = max(h_init, h_min)
     for _ in range(max_iter):

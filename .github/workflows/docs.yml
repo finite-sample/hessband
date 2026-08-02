@@ -8,18 +8,14 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  docs:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Build on every event, so a pull request still catches a broken docs build.
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -38,11 +34,29 @@ jobs:
         cd docs
         uv run sphinx-build -b html . build/html
     - name: Setup Pages
+      if: github.event_name == 'push'
       uses: actions/configure-pages@v5
     - name: Upload artifact
+      if: github.event_name == 'push'
       uses: actions/upload-pages-artifact@v3
       with:
         path: 'docs/build/html'
+
+  # Deploy only on a push to main. Binding the github-pages environment on a
+  # pull_request made the job fail at startup, before any step ran and with no
+  # log to read, so every PR showed a red "docs" check while the docs built
+  # fine.
+  deploy:
+    needs: build
+    if: github.event_name == 'push'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
